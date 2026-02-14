@@ -1,0 +1,1 @@
+time curl -s http://localhost:11434/api/chat -d '{"model":"llama3.2:3b","messages":[{"role":"user","content":"hello"}],"stream":false}' 2>&1 | head -c 500

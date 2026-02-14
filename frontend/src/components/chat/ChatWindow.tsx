@@ -64,7 +64,7 @@ export function ChatWindow({
         text,
         department_id: departmentId,
         conversation_id: currentConvId || undefined,
-      });
+      }, { timeout: 120_000 });
 
       const data = res.data;
 
@@ -87,14 +87,16 @@ export function ChatWindow({
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || "Unknown error";
       const errorMessage: Message = {
         id: String(Date.now() + 1),
         conversation_id: currentConvId || "",
         role: "assistant",
-        content: "Sorry, I encountered an error processing your request.",
+        content: `Sorry, I encountered an error processing your request: ${detail}`,
         status: "error",
         created_at: new Date().toISOString(),
       };
+      console.error("Chat error:", err?.response?.data || err);
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);

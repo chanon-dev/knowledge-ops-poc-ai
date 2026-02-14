@@ -111,8 +111,10 @@ def rag_search(state: QueryState) -> dict:
             }
             for r in results
         ]
+        logger.info(f"RAG search returned {len(results)} results for query: {state['query'][:50]}")
         return {"rag_results": results, "context": context, "sources": sources}
     except Exception as e:
+        logger.error(f"RAG search failed: {e}", exc_info=True)
         return {"rag_results": [], "context": "", "sources": [], "error": str(e)}
 
 
@@ -138,6 +140,7 @@ def generate_answer(state: QueryState) -> dict:
         finally:
             loop.close()
     except Exception as e:
+        logger.error(f"LLM generation failed (model={model}, url={settings.OLLAMA_URL}): {e}", exc_info=True)
         return {
             "answer": f"I apologize, but I encountered an error generating a response: {e}",
             "confidence": 0.0,

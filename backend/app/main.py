@@ -1,5 +1,8 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -8,7 +11,23 @@ from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.rate_limiter import RateLimitMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: pre-load embedding model so first request isn't slow
+    logger.info("Pre-loading embedding model...")
+    from app.services.rag.embeddings import EmbeddingService
+    svc = EmbeddingService()
+    svc.embed_text("warmup")
+    if svc.is_fallback:
+        logger.warning("Embedding model NOT loaded — using random vectors (search will not work correctly)")
+    else:
+        logger.info("Embedding model ready")
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",

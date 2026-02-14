@@ -5,9 +5,9 @@ from app.services.rag.vector_store import VectorStore
 class RAGRetriever:
     """Combines embedding + vector search for RAG retrieval."""
 
-    def __init__(self, qdrant_url: str = "http://localhost:6333"):
+    def __init__(self):
         self.embedder = EmbeddingService()
-        self.vector_store = VectorStore(url=qdrant_url)
+        self.vector_store = VectorStore()
 
     def retrieve(
         self,

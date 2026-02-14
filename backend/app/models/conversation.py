@@ -57,4 +57,4 @@ class Message(Base):
 
     # Relationships
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
-    approval: Mapped[Optional["Approval"]] = relationship("Approval", back_populates="message", uselist=False)
+    approval: Mapped[Optional["Approval"]] = relationship("Approval", back_populates="message", uselist=False, cascade="all, delete-orphan", passive_deletes=True)

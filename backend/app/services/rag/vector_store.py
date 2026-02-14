@@ -10,6 +10,8 @@ from qdrant_client.http.models import (
     VectorParams,
 )
 
+from app.core.config import settings
+
 COLLECTION_NAME = "knowledge_vectors"
 VECTOR_SIZE = 1024  # BGE-large-en-v1.5
 
@@ -17,7 +19,8 @@ VECTOR_SIZE = 1024  # BGE-large-en-v1.5
 class VectorStore:
     """Qdrant vector store for knowledge retrieval."""
 
-    def __init__(self, url: str = "http://localhost:6333"):
+    def __init__(self, url: str | None = None):
+        url = url or settings.QDRANT_URL
         self.client = QdrantClient(url=url, timeout=30)
         self._ensure_collection()
 
