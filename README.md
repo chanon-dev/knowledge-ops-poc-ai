@@ -1,4 +1,4 @@
-# The Expert — Universal Enterprise AI Platform
+# KnowledgeOps — Universal Enterprise AI Platform
 
 ## 🚀 Quick Start (Development)
 
