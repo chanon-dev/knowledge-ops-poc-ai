@@ -1,0 +1,77 @@
+replicaCount:
+  api: 2
+  web: 2
+
+image:
+  api:
+    repository: the-expert/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  web:
+    repository: the-expert/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+service:
+  api:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+  web:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  hosts:
+    - host: app.theexpert.ai
+      service: web
+    - host: api.theexpert.ai
+      service: api
+  tls:
+    - secretName: the-expert-tls
+      hosts:
+        - app.theexpert.ai
+        - api.theexpert.ai
+
+resources:
+  api:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  web:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+config:
+  APP_NAME: "The Expert"
+  ENVIRONMENT: production
+  LOG_LEVEL: info
+  EMBEDDING_MODEL: "BAAI/bge-large-en-v1.5"
+  LLM_MODEL: "mistral:7b"
+
+secrets:
+  DATABASE_URL: ""
+  REDIS_URL: ""
+  JWT_SECRET_KEY: ""
+  MINIO_ACCESS_KEY: ""
+  MINIO_SECRET_KEY: ""

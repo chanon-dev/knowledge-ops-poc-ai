@@ -1,0 +1,199 @@
+{
+  "author": "The Expert AI",
+  "title": "The Expert - Enterprise AI Platform Schema",
+  "date": "2026-02-12T15:30:00.000Z",
+  "tables": [
+    {
+      "id": 0,
+      "name": "tenants",
+      "x": 361,
+      "y": 69,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "name", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "slug", "type": "VARCHAR(100)", "default": "", "check": "", "primary": false, "unique": true, "notNull": true, "increment": false },
+        { "name": "plan_tier", "type": "VARCHAR(50)", "default": "'free'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'active'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "settings", "type": "JSONB", "default": "'{}'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "created_at", "type": "TIMESTAMP", "default": "NOW()", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "updated_at", "type": "TIMESTAMP", "default": "NOW()", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Core tenant table",
+      "indices": [],
+      "color": "#175e7a"
+    },
+    {
+      "id": 1,
+      "name": "departments",
+      "x": 361,
+      "y": 427,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "tenant_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "name", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "slug", "type": "VARCHAR(100)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "icon", "type": "VARCHAR(10)", "default": "'📁'", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "config", "type": "JSONB", "default": "'{}'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'active'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Knowledge domains per tenant",
+      "indices": [],
+      "color": "#175e7a"
+    },
+    {
+      "id": 2,
+      "name": "users",
+      "x": 709,
+      "y": 69,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "tenant_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "email", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "full_name", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "role", "type": "VARCHAR(50)", "default": "'member'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "keycloak_id", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": true, "notNull": false, "increment": false }
+      ],
+      "comment": "System users",
+      "indices": [],
+      "color": "#175e7a"
+    },
+    {
+      "id": 3,
+      "name": "department_members",
+      "x": 709,
+      "y": 427,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "department_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "user_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "role", "type": "VARCHAR(50)", "default": "'member'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Mapping users to dept roles",
+      "indices": [],
+      "color": "#175e7a"
+    },
+    {
+      "id": 4,
+      "name": "knowledge_docs",
+      "x": 48,
+      "y": 427,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "tenant_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "department_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "title", "type": "VARCHAR(500)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "source_type", "type": "VARCHAR(50)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'pending'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "chunk_count", "type": "INT", "default": "0", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false }
+      ],
+      "comment": "RAG Documents",
+      "indices": [],
+      "color": "#388e3c"
+    },
+    {
+      "id": 5,
+      "name": "knowledge_chunks",
+      "x": 48,
+      "y": 745,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "document_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "chunk_index", "type": "INT", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "content", "type": "TEXT", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "qdrant_point_id", "type": "VARCHAR(100)", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false }
+      ],
+      "comment": "Vector chunks",
+      "indices": [],
+      "color": "#388e3c"
+    },
+    {
+      "id": 6,
+      "name": "conversations",
+      "x": 361,
+      "y": 745,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "tenant_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "department_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "user_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "title", "type": "VARCHAR(500)", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'active'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "updated_at", "type": "TIMESTAMP", "default": "NOW()", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Chat sessions",
+      "indices": [],
+      "color": "#6d28d9"
+    },
+    {
+      "id": 7,
+      "name": "messages",
+      "x": 361,
+      "y": 1030,
+      "fields": [
+        { "name": "id", "type": "BIGSERIAL", "default": "", "check": "", "primary": true, "unique": true, "notNull": true, "increment": true },
+        { "name": "conversation_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "role", "type": "VARCHAR(20)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "content", "type": "TEXT", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "confidence", "type": "FLOAT", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'completed'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "created_at", "type": "TIMESTAMP", "default": "NOW()", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Chat messages",
+      "indices": [],
+      "color": "#6d28d9"
+    },
+    {
+      "id": 8,
+      "name": "approvals",
+      "x": 709,
+      "y": 1030,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "message_id", "type": "BIGINT", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "department_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'pending'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "original_answer", "type": "TEXT", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "approved_answer", "type": "TEXT", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "reviewed_by", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false }
+      ],
+      "comment": "HITL Approvals",
+      "indices": [],
+      "color": "#d97706"
+    },
+    {
+      "id": 9,
+      "name": "subscriptions",
+      "x": 48,
+      "y": 69,
+      "fields": [
+        { "name": "id", "type": "UUID", "default": "gen_random_uuid()", "check": "", "primary": true, "unique": true, "notNull": true, "increment": false },
+        { "name": "tenant_id", "type": "UUID", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "plan_tier", "type": "VARCHAR(50)", "default": "", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false },
+        { "name": "max_users", "type": "INT", "default": "", "check": "", "primary": false, "unique": false, "notNull": false, "increment": false },
+        { "name": "stripe_subscription_id", "type": "VARCHAR(255)", "default": "", "check": "", "primary": false, "unique": true, "notNull": false, "increment": false },
+        { "name": "status", "type": "VARCHAR(20)", "default": "'active'", "check": "", "primary": false, "unique": false, "notNull": true, "increment": false }
+      ],
+      "comment": "Billing data",
+      "indices": [],
+      "color": "#b91c1c"
+    }
+  ],
+  "relationships": [
+    { "startTableId": 0, "startFieldId": 0, "endTableId": 1, "endFieldId": 1, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 0, "startFieldId": 0, "endTableId": 2, "endFieldId": 1, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 0, "startFieldId": 0, "endTableId": 9, "endFieldId": 1, "cardinality": "OneToOne", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 1, "startFieldId": 0, "endTableId": 3, "endFieldId": 1, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 2, "startFieldId": 0, "endTableId": 3, "endFieldId": 2, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 1, "startFieldId": 0, "endTableId": 4, "endFieldId": 2, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 4, "startFieldId": 0, "endTableId": 5, "endFieldId": 1, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 1, "startFieldId": 0, "endTableId": 6, "endFieldId": 2, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 2, "startFieldId": 0, "endTableId": 6, "endFieldId": 3, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "SetNull" },
+    { "startTableId": 6, "startFieldId": 0, "endTableId": 7, "endFieldId": 1, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 7, "startFieldId": 0, "endTableId": 8, "endFieldId": 1, "cardinality": "OneToOne", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 1, "startFieldId": 0, "endTableId": 8, "endFieldId": 2, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "Cascade" },
+    { "startTableId": 2, "startFieldId": 0, "endTableId": 8, "endFieldId": 6, "cardinality": "OneToMany", "updateConstraint": "NoAction", "deleteConstraint": "SetNull" }
+  ],
+  "notes": [],
+  "subjectAreas": [],
+  "database": "postgresql"
+}

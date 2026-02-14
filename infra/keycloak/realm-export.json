@@ -1,0 +1,181 @@
+{
+  "id": "the-expert",
+  "realm": "the-expert",
+  "displayName": "The Expert",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "bruteForceProtected": true,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "roles": {
+    "realm": [
+      {
+        "name": "owner",
+        "description": "Tenant owner with full access",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "admin",
+        "description": "Tenant administrator",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "member",
+        "description": "Regular team member",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "the-expert-app",
+      "name": "The Expert Frontend",
+      "description": "Next.js frontend application",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "+"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3000/*",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "role",
+            "jsonType.label": "String",
+            "multivalued": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "the-expert-api",
+      "name": "The Expert Backend API",
+      "description": "FastAPI backend service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "change-me-in-production",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "role",
+            "jsonType.label": "String",
+            "multivalued": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@demo.com",
+      "email": "admin@demo.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "attributes": {
+        "tenant_id": ["00000000-0000-0000-0000-000000000001"]
+      },
+      "realmRoles": ["owner"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "member@demo.com",
+      "email": "member@demo.com",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Member",
+      "lastName": "User",
+      "attributes": {
+        "tenant_id": ["00000000-0000-0000-0000-000000000001"]
+      },
+      "realmRoles": ["member"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "member123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

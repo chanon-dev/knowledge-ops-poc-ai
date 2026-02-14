@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerting-rules.yml"
+
+scrape_configs:
+  - job_name: "fastapi"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          service: "the-expert-api"
+
+  - job_name: "redis"
+    static_configs:
+      - targets: ["host.docker.internal:9121"]
+        labels:
+          service: "redis"
+
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["host.docker.internal:9187"]
+        labels:
+          service: "postgres"
+
+  - job_name: "qdrant"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["host.docker.internal:6333"]
+        labels:
+          service: "qdrant"
+
+  - job_name: "ollama"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["host.docker.internal:11434"]
+        labels:
+          service: "ollama"
+
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "node"

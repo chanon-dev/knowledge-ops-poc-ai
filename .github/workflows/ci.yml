@@ -1,0 +1,247 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+# Cancel previous runs for the same PR / branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+# --------------------------------------------------------------------------- #
+#  JOBS
+# --------------------------------------------------------------------------- #
+jobs:
+
+  # ───────────────────────────── Lint & Type-check ────────────────────────── #
+  lint:
+    name: Lint & Type-check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: backend
+          - target: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Python (backend) ──
+      - name: Set up Python
+        if: matrix.target == 'backend'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        if: matrix.target == 'backend'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-lint-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: pip-lint-
+
+      - name: Install Python lint tools
+        if: matrix.target == 'backend'
+        run: pip install ruff mypy
+
+      - name: Ruff lint (backend)
+        if: matrix.target == 'backend'
+        run: ruff check backend/
+
+      - name: Ruff format check (backend)
+        if: matrix.target == 'backend'
+        run: ruff format --check backend/
+
+      # ── Node (frontend) ──
+      - name: Set up Node.js
+        if: matrix.target == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: matrix.target == 'frontend'
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint (frontend)
+        if: matrix.target == 'frontend'
+        working-directory: frontend
+        run: npx next lint
+
+      - name: TypeScript type-check (frontend)
+        if: matrix.target == 'frontend'
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  # ──────────────────────────── Unit Tests ────────────────────────────────── #
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [lint]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: the_expert_test
+          POSTGRES_USER: expert
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U expert"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-test-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: pip-test-
+
+      - name: Install backend dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Run pytest
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://expert:test_password@localhost:5432/the_expert_test
+          REDIS_URL: redis://localhost:6379/0
+          TESTING: "1"
+        run: |
+          pytest \
+            --tb=short \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            -q
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
+  # ──────────────────────── Docker Build (main only) ──────────────────────── #
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: backend
+            context: ./backend
+            image_suffix: backend
+          - target: frontend
+            context: ./frontend
+            image_suffix: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image_suffix }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ────────────────── Deploy to Staging (develop only) ────────────────────── #
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging environment
+        env:
+          DEPLOY_ENV: staging
+        run: |
+          echo "======================================"
+          echo "  Deploying to STAGING environment"
+          echo "======================================"
+          echo ""
+          echo "Branch:    ${{ github.ref_name }}"
+          echo "Commit:    ${{ github.sha }}"
+          echo "Actor:     ${{ github.actor }}"
+          echo "Run ID:    ${{ github.run_id }}"
+          echo "Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo ""
+          echo "--- Placeholder: replace with actual deployment steps ---"
+          echo "Examples:"
+          echo "  - SSH into staging server and docker compose pull && docker compose up -d"
+          echo "  - kubectl apply -k infra/k8s/overlays/staging"
+          echo "  - aws ecs update-service --cluster staging --service backend --force-new-deployment"
+          echo ""
+          echo "Staging deployment placeholder completed successfully."

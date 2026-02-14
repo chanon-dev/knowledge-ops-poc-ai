@@ -1,0 +1,168 @@
+erDiagram
+    tenants ||--o{ departments : "has many"
+    tenants ||--o{ users : "has many"
+    tenants ||--o{ subscriptions : "has one active"
+    tenants ||--o{ api_keys : "has many"
+    tenants ||--o{ audit_logs : "has many"
+
+    departments ||--o{ department_members : "has many"
+    departments ||--o{ knowledge_docs : "has many"
+    departments ||--o{ conversations : "has many"
+    departments ||--o{ model_adapters : "has many"
+
+    users ||--o{ department_members : "belongs to many"
+    users ||--o{ conversations : "creates"
+    users ||--o{ approvals : "reviews"
+
+    knowledge_docs ||--o{ knowledge_chunks : "split into"
+
+    conversations ||--o{ messages : "contains"
+
+    messages ||--o| approvals : "may require"
+
+    model_adapters ||--o{ training_jobs : "trained by"
+
+    subscriptions ||--o{ usage_records : "tracks"
+    subscriptions ||--o{ invoices : "generates"
+
+    tenants {
+        uuid id PK
+        varchar name
+        varchar slug UK
+        varchar plan_tier
+        varchar status
+        jsonb settings
+        timestamp created_at
+    }
+
+    departments {
+        uuid id PK
+        uuid tenant_id FK
+        varchar name
+        varchar slug
+        varchar icon
+        jsonb config
+        varchar status
+    }
+
+    users {
+        uuid id PK
+        uuid tenant_id FK
+        varchar email UK
+        varchar full_name
+        varchar role
+        jsonb preferences
+    }
+
+    department_members {
+        uuid id PK
+        uuid department_id FK
+        uuid user_id FK
+        varchar role
+    }
+
+    knowledge_docs {
+        uuid id PK
+        uuid tenant_id FK
+        uuid department_id FK
+        varchar title
+        varchar source_type
+        varchar status
+        int chunk_count
+    }
+
+    knowledge_chunks {
+        uuid id PK
+        uuid document_id FK
+        int chunk_index
+        text content
+        varchar qdrant_point_id
+    }
+
+    conversations {
+        uuid id PK
+        uuid department_id FK
+        uuid user_id FK
+        varchar title
+        varchar status
+    }
+
+    messages {
+        bigint id PK
+        uuid conversation_id FK
+        varchar role
+        text content
+        float confidence
+        jsonb sources
+        varchar status
+    }
+
+    approvals {
+        uuid id PK
+        bigint message_id FK
+        uuid requested_by FK
+        uuid reviewed_by FK
+        varchar status
+        text original_answer
+        text approved_answer
+    }
+
+    model_adapters {
+        uuid id PK
+        uuid department_id FK
+        varchar name
+        varchar base_model
+        varchar version
+        varchar status
+        jsonb metrics
+    }
+
+    training_jobs {
+        uuid id PK
+        uuid model_adapter_id FK
+        varchar status
+        int training_samples
+        jsonb eval_metrics
+    }
+
+    subscriptions {
+        uuid id PK
+        uuid tenant_id FK
+        varchar plan_tier
+        decimal price_per_user
+        varchar stripe_subscription_id UK
+        varchar status
+    }
+
+    usage_records {
+        bigint id PK
+        uuid tenant_id FK
+        date record_date
+        int query_count
+        bigint tokens_used
+    }
+
+    invoices {
+        uuid id PK
+        uuid tenant_id FK
+        varchar invoice_number UK
+        decimal total_amount
+        varchar status
+    }
+
+    api_keys {
+        uuid id PK
+        uuid tenant_id FK
+        varchar key_prefix
+        jsonb permissions
+        int rate_limit
+    }
+
+    audit_logs {
+        bigint id PK
+        uuid tenant_id FK
+        varchar action
+        varchar resource_type
+        jsonb old_values
+        jsonb new_values
+    }

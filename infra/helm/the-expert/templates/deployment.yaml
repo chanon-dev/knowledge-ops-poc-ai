@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    app: {{ .Release.Name }}-api
+spec:
+  replicas: {{ .Values.replicaCount.api }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-api
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-api
+    spec:
+      containers:
+        - name: api
+          image: "{{ .Values.image.api.repository }}:{{ .Values.image.api.tag }}"
+          imagePullPolicy: {{ .Values.image.api.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.api.targetPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          resources:
+            {{- toYaml .Values.resources.api | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: {{ .Values.service.api.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: {{ .Values.service.api.targetPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+  labels:
+    app: {{ .Release.Name }}-web
+spec:
+  replicas: {{ .Values.replicaCount.web }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-web
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.image.web.repository }}:{{ .Values.image.web.tag }}"
+          imagePullPolicy: {{ .Values.image.web.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.web.targetPort }}
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://{{ (index .Values.ingress.hosts 1).host }}"
+          resources:
+            {{- toYaml .Values.resources.web | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.web.targetPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10

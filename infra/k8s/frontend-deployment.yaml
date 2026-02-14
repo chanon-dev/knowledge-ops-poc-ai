@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: the-expert-web
+  namespace: the-expert
+  labels:
+    app: the-expert-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: the-expert-web
+  template:
+    metadata:
+      labels:
+        app: the-expert-web
+    spec:
+      containers:
+        - name: web
+          image: the-expert/frontend:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://api.theexpert.ai"
+            - name: NEXTAUTH_URL
+              value: "https://app.theexpert.ai"
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: the-expert-secrets
+                  key: JWT_SECRET_KEY
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: the-expert-web
+  namespace: the-expert
+spec:
+  selector:
+    app: the-expert-web
+  ports:
+    - port: 80
+      targetPort: 3000
+  type: ClusterIP
