@@ -79,6 +79,7 @@ export interface Message {
   model_used?: string;
   latency_ms?: number;
   status?: string;
+  approval_id?: string;
   approval_required?: boolean;
   approval_status?: ApprovalStatus;
   metadata?: Record<string, unknown>;

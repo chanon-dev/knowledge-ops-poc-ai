@@ -131,6 +131,7 @@ class QueryService:
         await self.db.flush()
 
         # Create approval if needed
+        approval_id = None
         if final_state.get("needs_approval"):
             approval = Approval(
                 tenant_id=tenant_id,
@@ -143,6 +144,7 @@ class QueryService:
             )
             self.db.add(approval)
             await self.db.flush()
+            approval_id = str(approval.id)
 
         return {
             "answer": final_state.get("answer", ""),
@@ -155,6 +157,7 @@ class QueryService:
             "conversation_id": conversation.id,
             "message_id": ai_msg.id,
             "needs_approval": final_state.get("needs_approval", False),
+            "approval_id": approval_id,
         }
 
     async def get_conversation_history(

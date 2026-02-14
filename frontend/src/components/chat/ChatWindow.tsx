@@ -83,6 +83,7 @@ export function ChatWindow({
         model_used: data.model_used,
         latency_ms: data.latency_ms,
         status: data.needs_approval ? "pending_approval" : "completed",
+        approval_id: data.approval_id || undefined,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, aiMessage]);
@@ -112,7 +113,17 @@ export function ChatWindow({
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            onStatusChange={(msgId, newStatus) => {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === msgId ? { ...m, status: newStatus } : m
+                )
+              );
+            }}
+          />
         ))}
         {loading && (
           <div className="flex items-center gap-2 text-gray-400 p-4">

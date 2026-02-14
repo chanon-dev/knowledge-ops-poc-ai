@@ -7,7 +7,6 @@ import { useState } from "react";
 import {
   MessageSquare,
   BookOpen,
-  CheckSquare,
   BarChart3,
   Settings,
   Menu,
@@ -20,7 +19,6 @@ import {
 const navItems = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { href: "/approvals", label: "Approvals", icon: CheckSquare },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/executive", label: "Executive", icon: LayoutDashboard },
   { href: "/marketplace", label: "Marketplace", icon: Plug },

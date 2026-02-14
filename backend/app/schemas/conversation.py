@@ -19,6 +19,7 @@ class MessageResponse(BaseModel):
     latency_ms: float | None = None
     sources: dict | None = None
     status: str
+    approval_id: UUID | None = None
     created_at: datetime
 
 

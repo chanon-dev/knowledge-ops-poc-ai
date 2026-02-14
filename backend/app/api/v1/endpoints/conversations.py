@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, get_db
 from app.core.exceptions import NotFoundError
@@ -58,6 +59,7 @@ async def get_conversation(
 
     msg_stmt = (
         select(Message)
+        .options(selectinload(Message.approval))
         .where(Message.conversation_id == conversation_id)
         .order_by(Message.created_at.asc())
         .limit(200)
@@ -66,7 +68,13 @@ async def get_conversation(
     messages = list(msg_result.scalars().all())
 
     conv_data = ConversationResponse.model_validate(conversation).model_dump()
-    conv_data["messages"] = [MessageResponse.model_validate(m) for m in messages]
+    msg_list = []
+    for m in messages:
+        msg_data = MessageResponse.model_validate(m).model_dump()
+        if m.approval:
+            msg_data["approval_id"] = m.approval.id
+        msg_list.append(msg_data)
+    conv_data["messages"] = msg_list
     return conv_data
 
 

@@ -1,16 +1,59 @@
 "use client";
 
 import { useState } from "react";
+import { api } from "@/lib/api";
 import { Message } from "@/types";
-import { ChevronDown, ChevronUp, Clock, Cpu } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Cpu,
+  CheckCircle,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 
 interface MessageBubbleProps {
   message: Message;
+  onStatusChange?: (messageId: string, newStatus: string) => void;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, onStatusChange }: MessageBubbleProps) {
   const [showSources, setShowSources] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const isUser = message.role === "user";
+
+  const handleApprove = async () => {
+    if (!message.approval_id) return;
+    setActionLoading(true);
+    try {
+      await api.post(`/approvals/${message.approval_id}/approve`, {});
+      onStatusChange?.(message.id, "approved");
+    } catch {
+      // ignore
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!message.approval_id || !rejectReason.trim()) return;
+    setActionLoading(true);
+    try {
+      await api.post(`/approvals/${message.approval_id}/reject`, {
+        rejection_reason: rejectReason,
+      });
+      onStatusChange?.(message.id, "rejected");
+      setShowRejectInput(false);
+      setRejectReason("");
+    } catch {
+      // ignore
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -74,9 +117,75 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        {message.status === "pending_approval" && (
-          <div className="mt-2 text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded">
-            Pending human review
+        {/* Pending approval: show approve/reject actions */}
+        {message.status === "pending_approval" && message.approval_id && (
+          <div className="mt-3 pt-2 border-t border-yellow-200">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded font-medium">
+                Pending human review
+              </span>
+            </div>
+            {!showRejectInput ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleApprove}
+                  disabled={actionLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {actionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                  Approve
+                </button>
+                <button
+                  onClick={() => setShowRejectInput(true)}
+                  disabled={actionLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  <XCircle className="h-3 w-3" />
+                  Reject
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Rejection reason..."
+                  className="w-full text-xs border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-red-300"
+                  onKeyDown={(e) => e.key === "Enter" && handleReject()}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleReject}
+                    disabled={actionLoading || !rejectReason.trim()}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+                    Confirm Reject
+                  </button>
+                  <button
+                    onClick={() => { setShowRejectInput(false); setRejectReason(""); }}
+                    className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Already reviewed status badges */}
+        {message.status === "approved" && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
+            <CheckCircle className="h-3 w-3" />
+            Approved
+          </div>
+        )}
+        {message.status === "rejected" && (
+          <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
+            <XCircle className="h-3 w-3" />
+            Rejected
           </div>
         )}
       </div>
