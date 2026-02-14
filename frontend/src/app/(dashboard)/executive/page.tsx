@@ -54,7 +54,7 @@ export default function ExecutiveDashboard() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Executive Dashboard</h1>
-        <p className="text-muted-foreground">C-level summary of The Expert platform performance</p>
+        <p className="text-muted-foreground">C-level summary of KnowledgeOps platform performance</p>
       </div>
 
       {/* KPI Cards */}

@@ -11,13 +11,24 @@ export default function ChatPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     api.get("/departments").then((res) => {
       const depts = res.data.data || [];
       setDepartments(depts);
       if (depts.length > 0) setSelectedDeptId(depts[0].id);
-    }).catch(() => { });
+    }).catch((err) => {
+      const status = err.response?.status;
+      if (status === 401) {
+        setError("Session expired. Please log in again.");
+      } else {
+        setError("Failed to load departments. Please try again.");
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleNewConversation = () => {
@@ -44,7 +55,23 @@ export default function ChatPage() {
         </button>
       </div>
 
-      {selectedDeptId ? (
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center text-gray-400">
+          Loading departments...
+        </div>
+      ) : error ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-2">
+            <p className="text-red-500">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : selectedDeptId ? (
         <div className="flex-1 bg-white rounded-xl border shadow-sm overflow-hidden">
           <ChatWindow
             departmentId={selectedDeptId}

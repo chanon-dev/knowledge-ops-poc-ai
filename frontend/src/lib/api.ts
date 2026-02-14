@@ -9,12 +9,32 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Cache session to avoid calling /api/auth/session on every request
+let cachedToken: string | null = null;
+let tokenFetchPromise: Promise<string | null> | null = null;
+
+async function getToken(): Promise<string | null> {
+  if (cachedToken) return cachedToken;
+  if (tokenFetchPromise) return tokenFetchPromise;
+  tokenFetchPromise = getSession().then((session) => {
+    cachedToken = session?.accessToken || null;
+    tokenFetchPromise = null;
+    return cachedToken;
+  });
+  return tokenFetchPromise;
+}
+
+export function clearTokenCache() {
+  cachedToken = null;
+  tokenFetchPromise = null;
+}
+
 // Request interceptor to attach auth token
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const session = await getSession();
-    if (session?.accessToken) {
-      config.headers.Authorization = `Bearer ${session.accessToken}`;
+    const token = await getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -30,7 +50,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
 
     if (status === 401) {
-      // Token expired or invalid - redirect to login
+      clearTokenCache();
       if (typeof window !== "undefined") {
         window.location.href = "/login";
       }

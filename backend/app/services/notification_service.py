@@ -41,7 +41,7 @@ class NotificationService:
             # Optional: send email
             await self._send_email_notification(
                 to_email=reviewer.email,
-                subject="[The Expert] New answer requires approval",
+                subject="[KnowledgeOps] New answer requires approval",
                 body=f"Question: {question}\n\nPlease review at: /approvals/{approval_id}",
             )
 

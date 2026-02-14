@@ -1,0 +1,29 @@
+IT Operations Troubleshooting Guide
+
+## Server Down Procedure
+1. Check server status: ping the server IP
+2. Check system logs: journalctl -xe or /var/log/syslog
+3. Check disk space: df -h
+4. Check memory: free -m
+5. Restart services if needed: systemctl restart <service>
+
+## Network Connectivity Issues
+1. Check if DNS resolves: nslookup domain.com
+2. Test connectivity: traceroute destination
+3. Check firewall rules: iptables -L or ufw status
+4. Verify network interface: ip addr show
+5. Check for packet loss: ping -c 100 destination
+
+## Database Troubleshooting
+1. Check database connection: pg_isready -h localhost
+2. Check active connections: SELECT count(*) FROM pg_stat_activity;
+3. Check slow queries: SELECT * FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;
+4. Check disk usage: SELECT pg_size_pretty(pg_database_size('dbname'));
+5. Restart PostgreSQL: systemctl restart postgresql
+
+## High CPU Usage
+1. Identify the process: top or htop
+2. Check process details: ps aux | grep <PID>
+3. Check for runaway queries in database
+4. Consider scaling horizontally or vertically
+5. Set up alerting with Prometheus/Grafana

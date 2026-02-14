@@ -20,10 +20,13 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RateLimitMiddleware, redis_url=settings.REDIS_URL)
 app.add_middleware(TenantContextMiddleware)
 
+
+
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -38,7 +41,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to The Expert API"}
+    return {"message": "Welcome to KnowledgeOps API"}
 
 
 @app.get("/health")

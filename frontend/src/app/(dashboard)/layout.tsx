@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 import {
   MessageSquare,
@@ -33,7 +33,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const userName = session?.user?.name || "User";
+  const tenantName = session?.user?.tenantName || "—";
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -51,7 +55,7 @@ export default function DashboardLayout({
           }`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b">
-          <h1 className="text-xl font-bold text-blue-600">The Expert</h1>
+          <h1 className="text-xl font-bold text-blue-600">KnowledgeOps</h1>
           <button
             className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
@@ -104,9 +108,9 @@ export default function DashboardLayout({
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Demo Corp</span>
+            <span className="text-sm text-gray-600">{tenantName}</span>
             <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-              A
+              {userName.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>

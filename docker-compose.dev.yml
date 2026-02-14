@@ -87,6 +87,7 @@ services:
   # ─── AI ENGINE ───
   ollama:
     image: ollama/ollama:latest
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull ${OLLAMA_MODEL:-llama3.2:3b}; wait"]
     volumes:
       - ollama_data:/root/.ollama
     ports:

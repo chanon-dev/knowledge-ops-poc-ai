@@ -89,7 +89,7 @@ async def seed():
             icon="🖥️",
             description="Server, network, and infrastructure troubleshooting",
             config={
-                "model": "llama3-8b",
+                "model": "llama3.2:3b",
                 "confidence_threshold": 0.85,
                 "auto_approve": False,
                 "system_prompt": "You are an IT operations expert specializing in server, network, and infrastructure troubleshooting.",
@@ -106,7 +106,7 @@ async def seed():
             icon="👥",
             description="HR policies, benefits, and onboarding",
             config={
-                "model": "llama3-8b",
+                "model": "llama3.2:3b",
                 "confidence_threshold": 0.80,
                 "auto_approve": False,
                 "system_prompt": "You are an HR expert specializing in company policies, benefits, and employee onboarding.",
@@ -123,7 +123,7 @@ async def seed():
             icon="⚖️",
             description="Contracts, compliance, and legal Q&A",
             config={
-                "model": "llama3-8b",
+                "model": "llama3.2:3b",
                 "confidence_threshold": 0.90,
                 "auto_approve": False,
                 "system_prompt": "You are a legal expert specializing in contracts, compliance, and corporate governance.",

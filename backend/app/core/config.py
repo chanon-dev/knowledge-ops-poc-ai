@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     )
 
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "The Expert"
+    PROJECT_NAME: str = "KnowledgeOps"
     ENVIRONMENT: str = "local"  # local, staging, production
 
     # Database
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[str] = []
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     RATE_LIMIT_FREE: int = 50
     RATE_LIMIT_PRO: int = 500
     RATE_LIMIT_ENTERPRISE: int = 0  # 0 = unlimited
+
+    # Ollama
+    OLLAMA_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2:3b"
 
     # Logging
     LOG_LEVEL: str = "INFO"

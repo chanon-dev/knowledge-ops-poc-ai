@@ -62,7 +62,7 @@ export default function MarketplacePage() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Plugin Marketplace</h1>
-        <p className="text-muted-foreground">Browse and install plugins to extend The Expert</p>
+        <p className="text-muted-foreground">Browse and install plugins to extend KnowledgeOps</p>
       </div>
 
       {/* Category Filter */}

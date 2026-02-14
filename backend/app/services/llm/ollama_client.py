@@ -3,22 +3,25 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from app.core.config import settings
+
 
 class OllamaClient:
     """Async client for Ollama LLM inference."""
 
-    def __init__(self, base_url: str = "http://localhost:11434"):
-        self.base_url = base_url.rstrip("/")
+    def __init__(self, base_url: str | None = None):
+        self.base_url = (base_url or settings.OLLAMA_URL).rstrip("/")
         self.client = httpx.AsyncClient(base_url=self.base_url, timeout=120.0)
 
     async def generate(
         self,
         prompt: str,
-        model: str = "llama3:8b",
+        model: str | None = None,
         stream: bool = False,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> str | AsyncIterator[str]:
+        model = model or settings.OLLAMA_MODEL
         payload = {
             "model": model,
             "prompt": prompt,
@@ -52,11 +55,12 @@ class OllamaClient:
     async def chat(
         self,
         messages: list[dict],
-        model: str = "llama3:8b",
+        model: str | None = None,
         stream: bool = False,
         temperature: float = 0.7,
         max_tokens: int = 2048,
     ) -> str | AsyncIterator[str]:
+        model = model or settings.OLLAMA_MODEL
         payload = {
             "model": model,
             "messages": messages,

@@ -32,7 +32,7 @@ export default function WhiteLabelSettings() {
   return (
     <div className="p-6 max-w-2xl">
       <h1 className="text-2xl font-bold mb-2">White-Label Settings</h1>
-      <p className="text-muted-foreground mb-6">Customize the appearance of The Expert for your organization</p>
+      <p className="text-muted-foreground mb-6">Customize the appearance of KnowledgeOps for your organization</p>
 
       <div className="space-y-6">
         {/* Company Name */}
@@ -107,7 +107,7 @@ export default function WhiteLabelSettings() {
           <label className="block text-sm font-medium mb-2">Preview</label>
           <div className="border rounded-lg overflow-hidden">
             <div className="h-12 flex items-center px-4 text-white font-semibold" style={{ backgroundColor: branding.primary_color }}>
-              {branding.company_name || 'The Expert'}
+              {branding.company_name || 'KnowledgeOps'}
             </div>
             <div className="p-4 bg-background">
               <div className="h-8 w-32 rounded" style={{ backgroundColor: branding.secondary_color, opacity: 0.3 }} />

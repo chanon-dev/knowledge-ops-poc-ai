@@ -6,6 +6,8 @@ from uuid import UUID
 
 from langgraph.graph import END, StateGraph
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +50,7 @@ def route_department(state: QueryState) -> dict:
     """Load department configuration."""
     config = state.get("department_config", {})
     return {
-        "model_name": config.get("model", "llama3:8b"),
+        "model_name": settings.OLLAMA_MODEL,
         "confidence_threshold": config.get("confidence_threshold", 0.85),
         "system_prompt": config.get(
             "system_prompt",
@@ -125,7 +127,7 @@ def generate_answer(state: QueryState) -> dict:
         system_prompt=state.get("system_prompt", "You are a helpful AI assistant."),
     )
 
-    model = state.get("model_name", "llama3:8b")
+    model = state.get("model_name", settings.OLLAMA_MODEL)
     client = OllamaClient()
 
     start = time.perf_counter()

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.graph import QueryState, create_query_graph
+from app.core.config import settings
 from app.core.exceptions import NotFoundError
 from app.models.approval import Approval
 from app.models.conversation import Conversation, Message
@@ -76,7 +77,7 @@ class QueryService:
             "user_id": str(user_id),
             "image_path": image_path,
             "department_config": department.config or {},
-            "model_name": department.config.get("model", "llama3:8b") if department.config else "llama3:8b",
+            "model_name": settings.OLLAMA_MODEL,
             "confidence_threshold": department.config.get("confidence_threshold", 0.85) if department.config else 0.85,
             "system_prompt": department.config.get("system_prompt", "") if department.config else "",
             "rag_results": [],
