@@ -29,6 +29,7 @@ class TrainingJob(Base):
     # Job lifecycle
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued", index=True)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     error: Mapped[Optional[str]] = mapped_column(TEXT, nullable=True)
 
     # Results

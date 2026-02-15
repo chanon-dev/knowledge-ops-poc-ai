@@ -83,7 +83,7 @@ class LoRATrainer(BaseTrainer):
     @property
     def device_info(self) -> dict:
         """Return device information for logging and API responses."""
-        info = {"device": str(self.device), "dtype": str(self.dtype)}
+        info = {"device": str(self.device), "torch_dtype": str(self.dtype)}
         if self.device.type == "cuda":
             info["gpu_name"] = torch.cuda.get_device_name(0)
             info["gpu_memory_gb"] = round(torch.cuda.get_device_properties(0).total_mem / 1e9, 1)
@@ -102,7 +102,7 @@ class LoRATrainer(BaseTrainer):
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        load_kwargs: dict = {"torch_dtype": self.dtype}
+        load_kwargs: dict = {"dtype": self.dtype}
         if self.device.type == "cuda":
             # CUDA supports device_map for multi-GPU / auto sharding
             load_kwargs["device_map"] = "auto"
@@ -112,6 +112,10 @@ class LoRATrainer(BaseTrainer):
         # MPS/CPU: explicitly move model to device (device_map not supported)
         if self.device.type != "cuda":
             self.model = self.model.to(self.device)
+
+        # Required for gradient checkpointing with LoRA on MPS/CPU
+        if self.device.type != "cuda":
+            self.model.enable_input_require_grads()
 
         lora_config = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -171,8 +175,8 @@ class LoRATrainer(BaseTrainer):
             # pin_memory is not supported on MPS
             dataloader_pin_memory=self.device.type not in ("mps",),
             report_to=["mlflow"],
-            # gradient checkpointing helps reduce memory on constrained devices
-            gradient_checkpointing=self.device.type != "cuda",
+            # gradient checkpointing only on CPU (MPS does not support it reliably)
+            gradient_checkpointing=self.device.type == "cpu",
         )
 
         mlflow.set_experiment(mlflow_experiment)

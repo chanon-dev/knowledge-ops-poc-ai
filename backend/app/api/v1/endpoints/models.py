@@ -534,6 +534,7 @@ async def get_training_status(
         "id": str(job.id),
         "status": job.status,
         "progress": job.progress,
+        "status_message": job.status_message,
         "error": job.error,
         "metrics": job.metrics,
         "model_name": job.model_name,
@@ -542,6 +543,34 @@ async def get_training_status(
         "base_model_name": job.base_model_name,
         "method_key": job.method_key,
     }
+
+
+def _make_hf_progress_callback(session, job):
+    """Create a tqdm callback that writes HuggingFace download progress to DB."""
+    import tqdm as _tqdm_mod
+
+    _original_init = _tqdm_mod.tqdm.__init__
+    _original_update = _tqdm_mod.tqdm.update
+
+    def _patched_init(self, *args, **kwargs):
+        _original_init(self, *args, **kwargs)
+        desc = self.desc or ""
+        if self.total:
+            job.status_message = f"Downloading {desc}..."
+            session.commit()
+
+    def _patched_update(self, n=1):
+        _original_update(self, n)
+        desc = self.desc or ""
+        if self.total and self.total > 0:
+            pct = int(self.n / self.total * 100)
+            size_mb = self.total / 1e6
+            job.status_message = f"Downloading {desc} ({pct}% of {size_mb:.0f}MB)"
+            # Only commit at 10% intervals to avoid excessive DB writes
+            if pct % 10 == 0 or pct >= 100:
+                session.commit()
+
+    return _tqdm_mod, _original_init, _original_update, _patched_init, _patched_update
 
 
 async def _run_training(job_id: str):
@@ -574,6 +603,7 @@ async def _run_training(job_id: str):
         try:
             job.status = "running"
             job.progress = 10
+            job.status_message = "Exporting approved Q&A data..."
             job.started_at = datetime.now(timezone.utc)
             session.commit()
 
@@ -586,45 +616,67 @@ async def _run_training(job_id: str):
             if len(df) < min_samples:
                 job.status = "failed"
                 job.error = f"Not enough training data (found {len(df)}, minimum {min_samples})"
+                job.status_message = None
                 session.commit()
                 return
 
             # 2. Prepare dataset
             job.progress = 30
+            job.status_message = f"Preparing dataset ({len(df)} Q&A pairs)..."
             session.commit()
 
             data = pipeline.convert_to_instruction_format(df)
             data = pipeline.clean_and_deduplicate(data)
             train_data, val_data, test_data = pipeline.split_dataset(data)
 
-            # 3. Setup trainer via registry
-            job.progress = 50
+            job.status_message = f"Dataset ready — train: {len(train_data)}, val: {len(val_data)}, test: {len(test_data)}"
             session.commit()
 
-            from ml.training.registry import get_trainer
-            TrainerClass = get_trainer(job.method_key)
-            trainer = TrainerClass(force_device=config.get("force_device"))
-            trainer.setup(
-                base_model=job.base_model_name,
-                **{k: v for k, v in config.items() if k in ("lora_r", "lora_alpha", "lora_dropout", "target_modules")},
-            )
+            # 3. Setup trainer via registry — patch tqdm for download progress
+            job.progress = 40
+            job.status_message = f"Downloading model {job.base_model_name}..."
+            session.commit()
+
+            tqdm_mod, orig_init, orig_update, patched_init, patched_update = _make_hf_progress_callback(session, job)
+            tqdm_mod.tqdm.__init__ = patched_init
+            tqdm_mod.tqdm.update = patched_update
+
+            try:
+                from ml.training.registry import get_trainer
+                TrainerClass = get_trainer(job.method_key)
+                trainer = TrainerClass(force_device=config.get("force_device"))
+                trainer.setup(
+                    base_model=job.base_model_name,
+                    **{k: v for k, v in config.items() if k in ("lora_r", "lora_alpha", "lora_dropout", "target_modules")},
+                )
+            finally:
+                # Always restore original tqdm
+                tqdm_mod.tqdm.__init__ = orig_init
+                tqdm_mod.tqdm.update = orig_update
+
             job.device_info = trainer.device_info
+            job.progress = 50
+            job.status_message = f"Model loaded on {trainer.device_info.get('device', 'cpu')}"
+            session.commit()
 
             # 4. Train
             job.progress = 60
+            epochs = config.get("epochs", settings.TRAINING_DEFAULT_EPOCHS)
+            job.status_message = f"Training LoRA adapter ({epochs} epochs)..."
             session.commit()
 
             output_dir = os.path.join(settings.TRAINING_OUTPUT_DIR, job_id)
             metrics = trainer.train(
                 train_data, val_data,
                 output_dir=output_dir,
-                epochs=config.get("epochs", settings.TRAINING_DEFAULT_EPOCHS),
+                epochs=epochs,
                 lr=config.get("learning_rate", settings.TRAINING_DEFAULT_LR),
                 batch_size=config.get("batch_size", settings.TRAINING_DEFAULT_BATCH_SIZE),
             )
 
             # 5. Evaluate
             job.progress = 80
+            job.status_message = f"Evaluating model on {len(test_data)} test samples..."
             session.commit()
 
             eval_metrics = trainer.evaluate(test_data)
@@ -638,6 +690,8 @@ async def _run_training(job_id: str):
             model_name = f"lora-{job_id[:8]}"
             deploy_target_key = config.get("deploy_target_key")
             if deploy_target_key:
+                job.status_message = f"Deploying model as '{model_name}' to {deploy_target_key}..."
+                session.commit()
                 try:
                     from ml.training.registry import get_deployer
                     DeployerClass = get_deployer(deploy_target_key)
@@ -655,10 +709,14 @@ async def _run_training(job_id: str):
                 except Exception as deploy_err:
                     logger.warning(f"Deploy failed (training still succeeded): {deploy_err}")
                     job.deployed_to_target = False
+            else:
+                job.status_message = "Saving adapter..."
+                session.commit()
 
             # 7. Complete
             job.progress = 100
             job.status = "completed"
+            job.status_message = "Training complete!"
             job.metrics = metrics
             job.model_name = model_name
             job.completed_at = datetime.now(timezone.utc)
@@ -668,4 +726,5 @@ async def _run_training(job_id: str):
             logger.error(f"Training job {job_id} failed: {e}")
             job.status = "failed"
             job.error = str(e)
+            job.status_message = None
             session.commit()

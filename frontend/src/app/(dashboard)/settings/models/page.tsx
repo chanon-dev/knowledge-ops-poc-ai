@@ -41,6 +41,7 @@ interface TrainingJob {
   id: string;
   status: string;
   progress: number;
+  status_message?: string;
   metrics?: Record<string, number>;
   model_name?: string;
   deployed_to_target?: boolean;
@@ -669,7 +670,7 @@ export default function ModelManagement() {
             />
           </div>
           <p className="text-sm text-muted-foreground">
-            {trainingJob.error || getProgressLabel(trainingJob.progress)}
+            {trainingJob.error || trainingJob.status_message || getProgressLabel(trainingJob.progress)}
           </p>
           {trainingJob.status === 'completed' && trainingJob.metrics && (
             <div className="mt-3 grid grid-cols-3 gap-3">

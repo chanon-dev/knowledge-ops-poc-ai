@@ -117,6 +117,7 @@ def _serialize_job(j: TrainingJob) -> dict:
         "config": j.config,
         "status": j.status,
         "progress": j.progress,
+        "status_message": j.status_message,
         "error": j.error,
         "metrics": j.metrics,
         "model_name": j.model_name,
