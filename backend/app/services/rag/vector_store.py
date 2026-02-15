@@ -50,6 +50,11 @@ class VectorStore:
                 field_name="document_id",
                 field_schema="keyword",
             )
+            self.client.create_payload_index(
+                collection_name=COLLECTION_NAME,
+                field_name="source_type",
+                field_schema="keyword",
+            )
 
     def upsert_vectors(self, points: list[dict]) -> None:
         qdrant_points = []
@@ -66,6 +71,7 @@ class VectorStore:
                         "chunk_index": p.get("chunk_index", 0),
                         "content": p.get("content", "")[:500],
                         "title": p.get("title", ""),
+                        "source_type": p.get("source_type", "document"),
                     },
                 )
             )
@@ -111,6 +117,7 @@ class VectorStore:
                 "title": r.payload.get("title", ""),
                 "document_id": r.payload.get("document_id"),
                 "chunk_index": r.payload.get("chunk_index", 0),
+                "source_type": r.payload.get("source_type", "document"),
             }
             for r in results
         ]

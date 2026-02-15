@@ -22,16 +22,24 @@ def build_rag_prompt(
     query: str,
     context: str,
     system_prompt: str,
+    has_verified_answers: bool = False,
 ) -> list[dict]:
     messages = [
         {"role": "system", "content": system_prompt},
     ]
 
     if context:
+        preamble = "Use the following knowledge base context to answer the user's question. Cite sources when applicable."
+        if has_verified_answers:
+            preamble += (
+                "\n\nIMPORTANT: Sections marked [VERIFIED ANSWER] are previously confirmed correct answers "
+                "by human reviewers. If a verified answer directly addresses the question, use it as your "
+                "primary source and adapt it to the current question."
+            )
         messages.append(
             {
                 "role": "system",
-                "content": f"Use the following knowledge base context to answer the user's question. Cite sources when applicable.\n\n{context}",
+                "content": f"{preamble}\n\n{context}",
             }
         )
 

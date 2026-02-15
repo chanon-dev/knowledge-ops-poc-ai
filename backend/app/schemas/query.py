@@ -8,6 +8,7 @@ class QueryRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=5000)
     department_id: UUID
     conversation_id: UUID | None = None
+    model_name: str | None = None
 
 
 class SourceItem(BaseModel):
@@ -28,3 +29,4 @@ class QueryResponse(BaseModel):
     conversation_id: UUID
     message_id: int
     needs_approval: bool = False
+    approval_id: str | None = None

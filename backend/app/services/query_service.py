@@ -3,9 +3,12 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.orm import joinedload
+
 from app.agents.graph import QueryState, create_query_graph
 from app.core.config import settings
 from app.core.exceptions import NotFoundError
+from app.models.allowed_model import AllowedModel
 from app.models.approval import Approval
 from app.models.conversation import Conversation, Message
 from app.models.department import Department
@@ -23,6 +26,7 @@ class QueryService:
         query_text: str,
         conversation_id: UUID | None = None,
         image_path: str | None = None,
+        model_name: str | None = None,
     ) -> dict:
         # Get department config
         stmt = select(Department).where(
@@ -69,6 +73,27 @@ class QueryService:
         self.db.add(user_msg)
         await self.db.flush()
 
+        # Look up provider config for the selected model
+        provider_type = None
+        provider_base_url = None
+        provider_api_key = None
+        effective_model = model_name or settings.OLLAMA_MODEL
+
+        if model_name:
+            allowed_result = await self.db.execute(
+                select(AllowedModel)
+                .options(joinedload(AllowedModel.provider))
+                .where(
+                    AllowedModel.tenant_id == tenant_id,
+                    AllowedModel.model_name == model_name,
+                )
+            )
+            allowed = allowed_result.scalar_one_or_none()
+            if allowed and allowed.provider:
+                provider_type = allowed.provider.provider_type
+                provider_base_url = allowed.provider.base_url
+                provider_api_key = allowed.provider.api_key
+
         # Run LangGraph orchestrator
         initial_state: QueryState = {
             "query": query_text,
@@ -77,9 +102,12 @@ class QueryService:
             "user_id": str(user_id),
             "image_path": image_path,
             "department_config": department.config or {},
-            "model_name": settings.OLLAMA_MODEL,
+            "model_name": effective_model,
             "confidence_threshold": department.config.get("confidence_threshold", 0.85) if department.config else 0.85,
             "system_prompt": department.config.get("system_prompt", "") if department.config else "",
+            "provider_type": provider_type,
+            "provider_base_url": provider_base_url,
+            "provider_api_key": provider_api_key,
             "rag_results": [],
             "context": "",
             "answer": "",
@@ -89,6 +117,7 @@ class QueryService:
             "tokens_input": 0,
             "tokens_output": 0,
             "latency_ms": 0.0,
+            "has_verified_answers": False,
             "needs_approval": False,
             "error": None,
         }
@@ -130,21 +159,20 @@ class QueryService:
         conversation.last_message_at = func.now()
         await self.db.flush()
 
-        # Create approval if needed
-        approval_id = None
-        if final_state.get("needs_approval"):
-            approval = Approval(
-                tenant_id=tenant_id,
-                department_id=department_id,
-                message_id=ai_msg.id,
-                requested_by=user_id,
-                status="pending",
-                original_answer=final_state.get("answer", ""),
-                priority="normal",
-            )
-            self.db.add(approval)
-            await self.db.flush()
-            approval_id = str(approval.id)
+        # Always create approval record so user can provide feedback
+        approval_status = "pending" if final_state.get("needs_approval") else "auto_approved"
+        approval = Approval(
+            tenant_id=tenant_id,
+            department_id=department_id,
+            message_id=ai_msg.id,
+            requested_by=user_id,
+            status=approval_status,
+            original_answer=final_state.get("answer", ""),
+            priority="normal" if final_state.get("needs_approval") else "low",
+        )
+        self.db.add(approval)
+        await self.db.flush()
+        approval_id = str(approval.id)
 
         return {
             "answer": final_state.get("answer", ""),

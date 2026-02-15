@@ -1,1 +1,15 @@
 time curl -s http://localhost:11434/api/chat -d '{"model":"llama3.2:3b","messages":[{"role":"user","content":"hello"}],"stream":false}' 2>&1 | head -c 500
+
+ข้าใจครับ นี่คือ core concept ที่สำคัญมาก — เป็น feedback loop สำหรับเทรน AI:
+
+
+User ถาม → AI ตอบ → User ลองแก้ปัญหา → ได้ผล → กลับมา Approve
+                                          → ไม่ได้ผล → Reject
+                                          
+Approve แล้ว → เก็บเป็น "verified answer" → ครั้งหน้าถามคล้ายกัน → AI ตอบจาก verified answer ได้เลย
+ซึ่งแปลว่าต้องเปลี่ยนแนวคิดหลายอย่างจากตอนนี้:
+
+ทุก AI response ต้อง approve/reject ได้ — ไม่ใช่แค่ low-confidence
+Approved answers ต้องเก็บลง vector store — เพื่อให้ RAG ดึงมาใช้ได้
+RAG ต้อง prioritize verified answers — ถ้าเจอ approved answer ที่ตรง ใช้เลย
+นี่เป็นการเปลี่ยนค่อนข้างใหญ่ ให้ผม plan ก่อนนะครับ

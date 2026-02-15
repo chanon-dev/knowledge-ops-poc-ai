@@ -15,35 +15,103 @@ from datasets import Dataset
 import evaluate
 import mlflow
 
+from ml.training.base import BaseTrainer
+
 logger = logging.getLogger(__name__)
 
 
-class LoRATrainer:
-    """Fine-tune a language model using LoRA (Low-Rank Adaptation)."""
+def get_device(force_device: Optional[str] = None) -> torch.device:
+    """Select the compute device.
 
-    def __init__(self):
+    Args:
+        force_device: Override auto-detection with "cuda", "mps", or "cpu".
+                      Falls back gracefully if the requested device is unavailable.
+    """
+    if force_device:
+        requested = force_device.lower()
+        if requested == "cuda" and torch.cuda.is_available():
+            return torch.device("cuda")
+        if requested == "mps" and torch.backends.mps.is_available():
+            return torch.device("mps")
+        if requested == "cpu":
+            return torch.device("cpu")
+        logger.warning(f"Requested device '{force_device}' unavailable, falling back to auto-detect")
+
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def get_dtype(device: torch.device) -> torch.dtype:
+    """Return appropriate dtype for the device."""
+    if device.type == "cuda":
+        return torch.float16
+    # MPS and CPU: float32 is the safe default
+    return torch.float32
+
+
+def get_training_precision(device: torch.device) -> dict:
+    """Return fp16/bf16 flags based on device capabilities."""
+    if device.type == "cuda":
+        # Check if GPU supports bf16 (Ampere+)
+        if torch.cuda.is_bf16_supported():
+            return {"fp16": False, "bf16": True}
+        return {"fp16": True, "bf16": False}
+    if device.type == "mps":
+        # Apple Silicon supports bf16 natively
+        return {"fp16": False, "bf16": True}
+    # CPU: no mixed precision
+    return {"fp16": False, "bf16": False}
+
+
+class LoRATrainer(BaseTrainer):
+    """Fine-tune a language model using LoRA (Low-Rank Adaptation).
+
+    Supports CUDA, Apple Silicon MPS, and CPU backends.
+    """
+
+    def __init__(self, force_device: Optional[str] = None):
+        self.device = get_device(force_device)
+        self.dtype = get_dtype(self.device)
+
         self.model = None
         self.tokenizer = None
         self.peft_model = None
 
+    @property
+    def device_info(self) -> dict:
+        """Return device information for logging and API responses."""
+        info = {"device": str(self.device), "dtype": str(self.dtype)}
+        if self.device.type == "cuda":
+            info["gpu_name"] = torch.cuda.get_device_name(0)
+            info["gpu_memory_gb"] = round(torch.cuda.get_device_properties(0).total_mem / 1e9, 1)
+        return info
+
     def setup(
         self,
-        base_model: str = "mistralai/Mistral-7B-v0.1",
+        base_model: str,
         lora_r: int = 16,
         lora_alpha: int = 32,
         lora_dropout: float = 0.05,
         target_modules: Optional[list[str]] = None,
     ):
-        logger.info(f"Loading base model: {base_model}")
+        logger.info(f"Loading base model: {base_model} on {self.device} ({self.dtype})")
         self.tokenizer = AutoTokenizer.from_pretrained(base_model)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
+        load_kwargs: dict = {"torch_dtype": self.dtype}
+        if self.device.type == "cuda":
+            # CUDA supports device_map for multi-GPU / auto sharding
+            load_kwargs["device_map"] = "auto"
+
+        self.model = AutoModelForCausalLM.from_pretrained(base_model, **load_kwargs)
+
+        # MPS/CPU: explicitly move model to device (device_map not supported)
+        if self.device.type != "cuda":
+            self.model = self.model.to(self.device)
 
         lora_config = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -85,6 +153,8 @@ class LoRATrainer:
         train_dataset = self._tokenize(train_data)
         val_dataset = self._tokenize(val_data)
 
+        precision = get_training_precision(self.device)
+
         training_args = TrainingArguments(
             output_dir=output_dir,
             num_train_epochs=epochs,
@@ -96,14 +166,20 @@ class LoRATrainer:
             eval_strategy="epoch",
             save_strategy="epoch",
             load_best_model_at_end=True,
-            fp16=torch.cuda.is_available(),
+            fp16=precision["fp16"],
+            bf16=precision["bf16"],
+            # pin_memory is not supported on MPS
+            dataloader_pin_memory=self.device.type not in ("mps",),
             report_to=["mlflow"],
+            # gradient checkpointing helps reduce memory on constrained devices
+            gradient_checkpointing=self.device.type != "cuda",
         )
 
         mlflow.set_experiment(mlflow_experiment)
         with mlflow.start_run():
             mlflow.log_params({
                 "epochs": epochs, "lr": lr, "batch_size": batch_size,
+                **self.device_info,
                 "train_samples": len(train_data), "val_samples": len(val_data),
             })
 
@@ -156,3 +232,9 @@ class LoRATrainer:
         self.peft_model.save_pretrained(output_dir)
         self.tokenizer.save_pretrained(output_dir)
         logger.info(f"LoRA adapter saved to {output_dir}")
+
+
+# Self-register on import
+from ml.training.registry import register_trainer  # noqa: E402
+
+register_trainer("lora", LoRATrainer)

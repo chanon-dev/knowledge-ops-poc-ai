@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     knowledge,
     models,
     plugins,
+    training,
     query,
     stripe_webhooks,
     tenants,
@@ -39,6 +40,7 @@ api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(branding.router, prefix="/branding", tags=["branding"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(models.router, prefix="/models", tags=["models"])
+api_router.include_router(training.router, prefix="/training", tags=["training"])
 api_router.include_router(edge.router, prefix="/edge", tags=["edge"])
 api_router.include_router(data_export.router, prefix="/data", tags=["data-export"])
 api_router.include_router(plugins.router, prefix="/plugins", tags=["plugins"])

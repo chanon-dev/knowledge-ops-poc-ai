@@ -22,5 +22,6 @@ async def execute_query(
         user_id=user.id,
         query_text=body.text,
         conversation_id=body.conversation_id,
+        model_name=body.model_name,
     )
     return QueryResponse(**result)

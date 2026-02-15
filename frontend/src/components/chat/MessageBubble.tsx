@@ -117,14 +117,16 @@ export function MessageBubble({ message, onStatusChange }: MessageBubbleProps) {
           </div>
         )}
 
-        {/* Pending approval: show approve/reject actions */}
-        {message.status === "pending_approval" && message.approval_id && (
-          <div className="mt-3 pt-2 border-t border-yellow-200">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded font-medium">
-                Pending human review
-              </span>
-            </div>
+        {/* Show approve/reject for all AI messages that haven't been reviewed yet */}
+        {message.approval_id && message.status !== "approved" && message.status !== "rejected" && (
+          <div className="mt-3 pt-2 border-t border-gray-200">
+            {message.status === "pending_approval" && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded font-medium">
+                  Pending human review
+                </span>
+              </div>
+            )}
             {!showRejectInput ? (
               <div className="flex items-center gap-2">
                 <button

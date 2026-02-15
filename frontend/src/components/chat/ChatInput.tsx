@@ -2,13 +2,22 @@
 
 import { useState, useRef, KeyboardEvent } from "react";
 import { Send, Image, X } from "lucide-react";
+import { ModelSelector } from "./ModelSelector";
+
+interface ChatModel {
+  name: string;
+  size: number;
+}
 
 interface ChatInputProps {
   onSend: (text: string, image?: File) => void;
   disabled?: boolean;
+  models?: ChatModel[];
+  selectedModel: string | null;
+  onModelSelect: (model: string) => void;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, models = [], selectedModel, onModelSelect }: ChatInputProps) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -69,6 +78,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         </div>
       )}
       <div className="flex items-end gap-2">
+        <ModelSelector
+          models={models}
+          selectedModel={selectedModel}
+          onSelect={onModelSelect}
+        />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"

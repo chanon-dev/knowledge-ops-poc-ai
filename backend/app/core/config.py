@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     OLLAMA_URL: str
     OLLAMA_MODEL: str
 
+    # Training / ML
+    TRAINING_DEFAULT_BASE_MODEL: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    TRAINING_DEFAULT_EPOCHS: int = 3
+    TRAINING_DEFAULT_LR: float = 2e-4
+    TRAINING_DEFAULT_BATCH_SIZE: int = 4
+    TRAINING_MIN_SAMPLES: int = 10
+    TRAINING_OUTPUT_DIR: str = "/tmp/lora_models"
+    TRAINING_DEPLOY_TO_OLLAMA: bool = True
+    TRAINING_SYSTEM_PROMPT: str = "You are an enterprise AI assistant. Answer questions accurately based on the provided context and knowledge base."
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

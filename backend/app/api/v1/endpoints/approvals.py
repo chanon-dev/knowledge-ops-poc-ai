@@ -1,4 +1,5 @@
-from uuid import UUID
+import logging
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -11,6 +12,8 @@ from app.models.conversation import Message
 from app.models.user import User
 from app.schemas.approval import ApprovalResponse, ApproveAction, RejectAction
 from app.schemas.common import PaginatedResponse, PaginationParams, build_paginated_response
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -76,7 +79,7 @@ async def approve(
     if not approval:
         raise NotFoundError("Approval not found")
 
-    if approval.status != "pending":
+    if approval.status not in ("pending", "auto_approved"):
         raise BadRequestError(f"Approval is already {approval.status}")
 
     approval.status = "approved"
@@ -96,6 +99,47 @@ async def approve(
 
     await db.flush()
     await db.refresh(approval)
+
+    # Store verified Q&A pair in Qdrant for future retrieval
+    if message:
+        try:
+            # Find the user's original question
+            user_msg_stmt = select(Message).where(
+                Message.conversation_id == message.conversation_id,
+                Message.role == "user",
+                Message.id < message.id,
+            ).order_by(Message.id.desc()).limit(1)
+            user_msg_result = await db.execute(user_msg_stmt)
+            user_message = user_msg_result.scalar_one_or_none()
+
+            if user_message:
+                from app.services.rag.embeddings import EmbeddingService
+                from app.services.rag.vector_store import VectorStore
+
+                embedder = EmbeddingService()
+                vector_store = VectorStore()
+
+                question_text = user_message.content
+                answer_text = approval.approved_answer or approval.original_answer
+
+                question_vector = embedder.embed_text(question_text)
+                verified_doc_id = f"verified_{approval.id}"
+
+                vector_store.upsert_vectors([{
+                    "id": str(uuid4()),
+                    "vector": question_vector,
+                    "tenant_id": str(approval.tenant_id),
+                    "department_id": str(approval.department_id),
+                    "document_id": verified_doc_id,
+                    "chunk_index": 0,
+                    "content": f"Q: {question_text}\nA: {answer_text}",
+                    "title": f"Verified: {question_text[:80]}",
+                    "source_type": "verified_answer",
+                }])
+                logger.info(f"Stored verified answer in Qdrant: {verified_doc_id}")
+        except Exception as e:
+            logger.warning(f"Failed to store verified answer in Qdrant: {e}")
+
     return approval
 
 
@@ -115,8 +159,10 @@ async def reject(
     if not approval:
         raise NotFoundError("Approval not found")
 
-    if approval.status != "pending":
+    if approval.status not in ("pending", "auto_approved", "approved"):
         raise BadRequestError(f"Approval is already {approval.status}")
+
+    was_approved = approval.status == "approved"
 
     approval.status = "rejected"
     approval.reviewed_by = user.id
@@ -136,4 +182,16 @@ async def reject(
 
     await db.flush()
     await db.refresh(approval)
+
+    # Remove verified answer from Qdrant if it was previously approved
+    if was_approved:
+        try:
+            from app.services.rag.vector_store import VectorStore
+            vector_store = VectorStore()
+            verified_doc_id = f"verified_{approval.id}"
+            vector_store.delete_by_document(verified_doc_id)
+            logger.info(f"Removed verified answer from Qdrant: {verified_doc_id}")
+        except Exception as e:
+            logger.warning(f"Failed to remove verified answer from Qdrant: {e}")
+
     return approval

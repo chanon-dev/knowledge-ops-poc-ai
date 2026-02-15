@@ -35,7 +35,7 @@ pip install -r requirements.txt
 alembic upgrade head
 
 # Start API server
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000 --fd 0 2>/dev/null || (lsof -ti :8000 | xargs kill -9; uvicorn app.main:app --reload --port 8000)
 ```
 
 ### 3. Setup Frontend Application

@@ -22,6 +22,10 @@ class QueryState(TypedDict):
     model_name: str
     confidence_threshold: float
     system_prompt: str
+    # Provider config (for external AI models)
+    provider_type: str | None  # "ollama" or "openai_compatible"
+    provider_base_url: str | None
+    provider_api_key: str | None
     # Vision
     image_description: str | None
     # RAG results
@@ -35,6 +39,8 @@ class QueryState(TypedDict):
     tokens_input: int
     tokens_output: int
     latency_ms: float
+    # RAG metadata
+    has_verified_answers: bool
     # Routing
     needs_approval: bool
     approval_id: str | None
@@ -111,26 +117,42 @@ def rag_search(state: QueryState) -> dict:
             }
             for r in results
         ]
-        logger.info(f"RAG search returned {len(results)} results for query: {state['query'][:50]}")
-        return {"rag_results": results, "context": context, "sources": sources}
+        has_verified = any(r.get("source_type") == "verified_answer" for r in results)
+        logger.info(f"RAG search returned {len(results)} results (verified={has_verified}) for query: {state['query'][:50]}")
+        return {"rag_results": results, "context": context, "sources": sources, "has_verified_answers": has_verified}
     except Exception as e:
         logger.error(f"RAG search failed: {e}", exc_info=True)
-        return {"rag_results": [], "context": "", "sources": [], "error": str(e)}
+        return {"rag_results": [], "context": "", "sources": [], "has_verified_answers": False, "error": str(e)}
+
+
+def _create_llm_client(state: QueryState):
+    """Create the appropriate LLM client based on provider config in state."""
+    provider_type = state.get("provider_type")
+
+    if provider_type == "openai_compatible":
+        from app.services.llm.openai_client import OpenAICompatibleClient
+        return OpenAICompatibleClient(
+            base_url=state.get("provider_base_url", ""),
+            api_key=state.get("provider_api_key"),
+        )
+
+    from app.services.llm.ollama_client import OllamaClient
+    return OllamaClient()
 
 
 def generate_answer(state: QueryState) -> dict:
     """Call LLM with RAG context to generate answer."""
-    from app.services.llm.ollama_client import OllamaClient
     from app.services.llm.prompt_templates import build_rag_prompt
 
     messages = build_rag_prompt(
         query=state["query"],
         context=state.get("context", ""),
         system_prompt=state.get("system_prompt", "You are a helpful AI assistant."),
+        has_verified_answers=state.get("has_verified_answers", False),
     )
 
     model = state.get("model_name", settings.OLLAMA_MODEL)
-    client = OllamaClient()
+    client = _create_llm_client(state)
 
     start = time.perf_counter()
     try:
@@ -140,7 +162,7 @@ def generate_answer(state: QueryState) -> dict:
         finally:
             loop.close()
     except Exception as e:
-        logger.error(f"LLM generation failed (model={model}, url={settings.OLLAMA_URL}): {e}", exc_info=True)
+        logger.error(f"LLM generation failed (model={model}): {e}", exc_info=True)
         return {
             "answer": f"I apologize, but I encountered an error generating a response: {e}",
             "confidence": 0.0,
@@ -182,6 +204,9 @@ def confidence_check(state: QueryState) -> dict:
     uncertainty_phrases = ["i'm not sure", "i don't know", "unclear", "cannot determine"]
     if any(phrase in answer.lower() for phrase in uncertainty_phrases):
         confidence -= 0.2
+
+    if state.get("has_verified_answers"):
+        confidence += 0.15
 
     confidence = max(0.0, min(1.0, confidence))
     needs_approval = confidence < threshold

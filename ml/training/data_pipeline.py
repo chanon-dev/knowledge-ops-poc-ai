@@ -18,7 +18,7 @@ class TrainingDataPipeline:
                 m_q.content AS question,
                 m_a.content AS answer,
                 c.department_id,
-                m_a.confidence_score,
+                m_a.confidence,
                 m_a.created_at
             FROM messages m_q
             JOIN messages m_a ON m_a.conversation_id = m_q.conversation_id
@@ -26,7 +26,7 @@ class TrainingDataPipeline:
             LEFT JOIN approvals a ON a.message_id = m_a.id
             WHERE m_q.role = 'user'
               AND m_a.role = 'assistant'
-              AND (a.status = 'approved' OR m_a.confidence_score >= 0.85)
+              AND (a.status = 'approved' OR m_a.confidence >= 0.85)
         """
         params = {}
         if tenant_id:

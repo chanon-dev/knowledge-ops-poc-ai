@@ -6,16 +6,27 @@ import { Message } from "@/types";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 
+interface ChatModel {
+  name: string;
+  size: number;
+}
+
 interface ChatWindowProps {
   departmentId: string;
   conversationId?: string;
   onConversationCreated?: (id: string) => void;
+  models?: ChatModel[];
+  selectedModel: string | null;
+  onModelSelect: (model: string) => void;
 }
 
 export function ChatWindow({
   departmentId,
   conversationId,
   onConversationCreated,
+  models = [],
+  selectedModel,
+  onModelSelect,
 }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +75,7 @@ export function ChatWindow({
         text,
         department_id: departmentId,
         conversation_id: currentConvId || undefined,
+        model_name: selectedModel || undefined,
       }, { timeout: 120_000 });
 
       const data = res.data;
@@ -137,7 +149,13 @@ export function ChatWindow({
         )}
         <div ref={scrollRef} />
       </div>
-      <ChatInput onSend={sendMessage} disabled={loading} />
+      <ChatInput
+        onSend={sendMessage}
+        disabled={loading}
+        models={models}
+        selectedModel={selectedModel}
+        onModelSelect={onModelSelect}
+      />
     </div>
   );
 }

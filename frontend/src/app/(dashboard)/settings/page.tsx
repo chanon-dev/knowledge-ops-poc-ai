@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Key, Users, CreditCard, Palette, Webhook, Brain, Plug } from "lucide-react";
+import { Building2, Key, Users, CreditCard, Palette, Webhook, Brain, FlaskConical } from "lucide-react";
 
 const settingsItems = [
   { href: "/settings/departments", label: "Departments", description: "Manage departments, configs, and members", icon: Building2 },
@@ -10,7 +10,8 @@ const settingsItems = [
   { href: "/settings/billing", label: "Billing", description: "Subscription, usage, and invoices", icon: CreditCard },
   { href: "/settings/white-label", label: "White Label", description: "Customize branding, colors, and logo", icon: Palette },
   { href: "/settings/webhooks", label: "Webhooks", description: "Configure event notifications", icon: Webhook },
-  { href: "/settings/models", label: "Models", description: "Fine-tuned model management", icon: Brain },
+  { href: "/settings/models", label: "Models", description: "AI providers, allowed models, and fine-tuning", icon: Brain },
+  { href: "/settings/training", label: "Training Catalog", description: "Manage training methods, base models, and deploy targets", icon: FlaskConical },
 ];
 
 export default function SettingsPage() {

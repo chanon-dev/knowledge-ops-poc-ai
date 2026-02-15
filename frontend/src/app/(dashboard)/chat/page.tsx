@@ -18,6 +18,8 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [models, setModels] = useState<{ name: string; size: number }[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
   const conversationId = searchParams.get("conv") || undefined;
 
@@ -37,12 +39,18 @@ export default function ChatPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    api
-      .get("/departments")
-      .then((res) => {
-        const depts = res.data.data || [];
+    Promise.all([
+      api.get("/departments"),
+      api.get("/models/available"),
+    ])
+      .then(([deptRes, modelRes]) => {
+        const depts = deptRes.data.data || [];
         setDepartments(depts);
         if (depts.length > 0) setSelectedDeptId(depts[0].id);
+
+        const availableModels = modelRes.data.data || [];
+        setModels(availableModels);
+        if (availableModels.length > 0) setSelectedModel(availableModels[0].name);
       })
       .catch((err) => {
         const status = err.response?.status;
@@ -123,6 +131,9 @@ export default function ChatPage() {
             departmentId={selectedDeptId}
             conversationId={conversationId}
             onConversationCreated={handleConversationCreated}
+            models={models}
+            selectedModel={selectedModel}
+            onModelSelect={setSelectedModel}
           />
         </div>
       ) : (
